@@ -1,4 +1,4 @@
-# --- FINAL ATTEMPT - NEW STRATEGY ---
+# --- FINAL CORRECTED CODE ---
 import streamlit as st
 import pandas as pd
 import yt_dlp
@@ -15,15 +15,11 @@ LANG_MAP = {
 
 def check_available_languages(channel_url):
     # --- NEW STRATEGY: Append /videos to the URL ---
-    # This can sometimes bypass simple anti-scraping measures.
     if not channel_url.endswith('/videos'):
         channel_url = channel_url.rstrip('/') + '/videos'
 
     ydl_opts = {
-        'playlist_items': '1',
-        'quiet': True,
-        'no_warnings': True,
-        'extract_flat': True,
+        'playlist_items': '1', 'quiet': True, 'no_warnings': True, 'extract_flat': True
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -46,8 +42,7 @@ def check_available_languages(channel_url):
 def get_filtered_video_list(channel_url, content_type, sort_by, limit):
     if not channel_url.endswith('/videos'):
         channel_url = channel_url.rstrip('/') + '/videos'
-        
-    # (The rest of the functions remain the same as the last version)
+    
     filter_opts = {
         'quiet': True, 'extract_flat': 'in_playlist', 'no_warnings': True
     }
@@ -118,31 +113,4 @@ if st.button("Check Available Languages"):
 if st.session_state.languages:
     st.header("2. Set Filters and Options")
     lang_code = st.selectbox("Select Language", st.session_state.languages, format_func=lambda x: f"{LANG_MAP.get(x, x)} ({x})")
-    content_type = st.radio("Content Type", ["All", "Longs", "Shorts"])
-    sort_by = st.radio("Sort By", ["Latest", "Most Popular"])
-    limit = st.number_input("Number of videos to process", 1, 100, 10)
-    st.header("3. Start Processing")
-    if st.button("Start Scraping", type="primary"):
-        st.session_state.processing_started = True
-        st.session_state.scraper_params = {'lang': lang_code, 'type': content_type, 'sort': sort_by, 'lim': limit}
-
-if st.session_state.processing_started:
-    params = st.session_state.scraper_params
-    video_urls = get_filtered_video_list(channel_url, params['type'], params['sort'], params['lim'])
-    if video_urls:
-        st.info(f"Found {len(video_urls)} videos. Starting data extraction...")
-        progress_bar = st.progress(0, text="Initializing...")
-        all_video_data = []
-        for i, video_url in enumerate(video_urls):
-            progress_bar.progress((i) / len(video_urls), text=f"Processing video {i+1}/{len(video_urls)}...")
-            try:
-                ydl_opts = {
-                    'writeautomaticsub': True, 'subtitleslangs': [params['lang']],
-                    'subtitlesformat': 'vtt', 'skip_download': True, 'quiet': True, 'no_warnings': True
-                }
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(video_url, download=False)
-                    transcript = ""
-                    if 'requested_subtitles' in info and info['requested_subtitles']:
-                        sub_data = info['requested_subtitles'][params['lang']]['data']
-         
+    content_type = st.radio("Content Type", ["All", "Longs", "Shorts"
