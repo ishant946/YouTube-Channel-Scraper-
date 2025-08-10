@@ -1,4 +1,4 @@
-# --- FINAL CORRECTED CODE ---
+# --- FINAL CORRECTED CODE V2 ---
 import streamlit as st
 import pandas as pd
 import yt_dlp
@@ -113,4 +113,49 @@ if st.button("Check Available Languages"):
 if st.session_state.languages:
     st.header("2. Set Filters and Options")
     lang_code = st.selectbox("Select Language", st.session_state.languages, format_func=lambda x: f"{LANG_MAP.get(x, x)} ({x})")
-    content_type = st.radio("Content Type", ["All", "Longs", "Shorts"
+    
+    # --- THIS LINE IS NOW FIXED ---
+    content_type = st.radio("Content Type", ["All", "Longs", "Shorts"])
+    
+    sort_by = st.radio("Sort By", ["Latest", "Most Popular"])
+    limit = st.number_input("Number of videos to process", 1, 100, 10)
+    st.header("3. Start Processing")
+    if st.button("Start Scraping", type="primary"):
+        st.session_state.processing_started = True
+        st.session_state.scraper_params = {'lang': lang_code, 'type': content_type, 'sort': sort_by, 'lim': limit}
+
+if st.session_state.processing_started:
+    params = st.session_state.scraper_params
+    video_urls = get_filtered_video_list(channel_url, params['type'], params['sort'], params['lim'])
+    if video_urls:
+        st.info(f"Found {len(video_urls)} videos. Starting data extraction...")
+        progress_bar = st.progress(0, text="Initializing...")
+        all_video_data = []
+        for i, video_url in enumerate(video_urls):
+            progress_bar.progress((i) / len(video_urls), text=f"Processing video {i+1}/{len(video_urls)}...")
+            try:
+                ydl_opts = {
+                    'writeautomaticsub': True, 'subtitleslangs': [params['lang']],
+                    'subtitlesformat': 'vtt', 'skip_download': True, 'quiet': True, 'no_warnings': True
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(video_url, download=False)
+                    transcript = ""
+                    if 'requested_subtitles' in info and info['requested_subtitles']:
+                        sub_data = info['requested_subtitles'][params['lang']]['data']
+                        transcript = clean_transcript(sub_data)
+                    all_video_data.append({
+                        'title': info.get('title'), 'view_count': info.get('view_count'),
+                        'upload_date': info.get('upload_date'), 'duration': info.get('duration'),
+                        'video_url': info.get('webpage_url'), 'transcript': transcript
+                    })
+            except Exception:
+                st.write(f"⚠️ Skipped: Failed to process video {i+1}.")
+        progress_bar.progress(1.0, text="Complete!")
+        st.success("Processing Complete!")
+        df = pd.DataFrame(all_video_data)
+        st.dataframe(df)
+        csv_data = df.to_csv(index=False).encode('utf-8')
+        channel_name = channel_url.split('@')[-1].split('/')[0]
+        st.download_button("📥 Download Data as CSV", csv_data, f"{channel_name}_data.csv", "text/csv")
+    st.session_state.processing_started = False
